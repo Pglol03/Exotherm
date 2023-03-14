@@ -5,6 +5,7 @@ import gcode from "gcode-utils";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 
+import Dropzone from "react-dropzone";
 import { StlViewer } from 'react-stl-file-viewer'
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 
@@ -14,10 +15,23 @@ const App = () => {
   const [infillDensity, setInfillDensity] = useState(50); // default value is 50
   const [filesx, setFile] = useState();
   const [volume, setvolume] = useState(0);
+  const handleDrop = (event) => {
+    setFile(URL.createObjectURL(event[0]));
+    const file = event.target.files[0];
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const buffer = event.target.result;
+      const geometry = loadStl(buffer);
+      const layers = sliceGeometry(geometry);
+      const gcodeData = generateGcode(layers, infillDensity);
+      downloadGcode(gcodeData);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
-    console.log("test", URL.createObjectURL(file));
-    setFile(URL.createObjectURL(file));
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -86,7 +100,14 @@ const App = () => {
 
   return (
     <div>
-      <input type="file" onChange={handleFileUpload} />
+      <Dropzone onDrop={handleDrop}>
+        {({ getRootProps, getInputProps }) => (
+          <div {...getRootProps({ className: "dropzone" })}>
+            <input {...getInputProps()} />
+            <p>Drag'n'drop files, or click to select files</p>
+          </div>
+        )}
+      </Dropzone>
       <Slider
         min={0}
         max={100}
@@ -99,16 +120,16 @@ const App = () => {
         <div>
           <div>Canvas</div>
           <StlViewer
-            width={500}
-            height={500}
-            url={filesx}
-            groundColor="rgb(255, 255, 255)"
-            objectColor="rgb(0, 128, 255)"
-            skyboxColor="rgb(255, 255, 255)"
-            gridLineColor="rgb(0, 0, 0)"
-            lightColor="rgb(255, 255, 255)"
-            volume={setvolume}
-          />
+          width={500}
+          height={500}
+          url={filesx}
+          groundColor="rgb(255, 255, 255)"
+          objectColor="rgb(17, 137, 137)"
+          skyboxColor="rgb(255, 255, 255)"
+          gridLineColor="rgb(0, 0, 0)"
+          lightColor="rgb(255, 255, 255)"
+          volume={setvolume}
+        />
         </div>
         <button onClick={handleSliceAndDownload}>Slice and Download</button>
       </div>
